@@ -22,6 +22,17 @@
 
     <script>
         const googleScriptURL = "https://script.google.com/macros/s/AKfycbzckbAh2LPUi_8A-727dtpunfTnkLcHK2ZmEn2VzFx532W0ik6DaEnmuQOyKVGR37RP3Q/exec";
+
+        function loadApp() {
+            const iframe = document.getElementById("appFrame");
+            iframe.src = googleScriptURL;
+            iframe.onload = function() {
+                document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
+                iframe.style.display = "block"; // ✅ iframe 표시
+            };
+        }
+
+        loadApp(); // ✅ 앱 로드 실행
     </script>
 
 </body>
