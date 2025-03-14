@@ -30,10 +30,10 @@
 
     <script>
         const googleScriptURL = "https://script.google.com/macros/s/AKfycbzckbAh2LPUi_8A-727dtpunfTnkLcHK2ZmEn2VzFx532W0ik6DaEnmuQOyKVGR37RP3Q/exec";
-
+    
         async function loadApp() {
             try {
-                const response = await fetch(googleScriptURL);
+                const response = await fetch(googleScriptURL, { mode: "no-cors" }); // ✅ CORS 문제 해결
                 const html = await response.text();
                 document.getElementById("appContent").innerHTML = html;
                 document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
@@ -42,9 +42,10 @@
                 console.error("Error loading app:", error);
             }
         }
-
+    
         loadApp(); // ✅ 앱 로드 실행
     </script>
+
 
 </body>
 </html>
