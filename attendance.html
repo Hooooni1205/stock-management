@@ -33,15 +33,32 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const storedEmployeeId = localStorage.getItem("employeeId");
-            const storedEmployeeName = localStorage.getItem("employeeName"); 
-        
+            let storedEmployeeId = localStorage.getItem("employeeId");
+            let storedEmployeeName = localStorage.getItem("employeeName");
+    
+            // ✅ URL에서 employeeId, employeeName 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlEmployeeId = urlParams.get("employeeId");
+            const urlEmployeeName = urlParams.get("employeeName");
+    
+            // ✅ URL에 값이 있으면 localStorage에 저장
+            if (urlEmployeeId && urlEmployeeName) {
+                localStorage.setItem("employeeId", urlEmployeeId);
+                localStorage.setItem("employeeName", urlEmployeeName);
+                storedEmployeeId = urlEmployeeId;
+                storedEmployeeName = urlEmployeeName;
+            }
+    
+            console.log("🔎 [attendance.html] 최종 로그인 정보:");
+            console.log("➡️ employeeId:", storedEmployeeId);
+            console.log("➡️ employeeName:", storedEmployeeName);
+    
             if (storedEmployeeId && storedEmployeeName) {
                 console.log("✅ 로그인된 사용자:", storedEmployeeName);
-                showAttendanceUI(storedEmployeeName); // 출퇴근 UI 표시
+                showAttendanceUI(storedEmployeeName);
             } else {
                 console.log("🚨 로그인 정보 없음 - 로그인 필요");
-                document.getElementById("loginNotice").style.display = "block"; // 로그인 필요 메시지 표시
+                document.getElementById("loginNotice").style.display = "block";
             }
         });
         
