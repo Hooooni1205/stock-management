@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>출퇴근 기록</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        button {
+            display: block;
+            width: 80%;
+            padding: 15px;
+            margin: 10px auto;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        #status {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🕒 출퇴근 기록</h2>
+    <p id="status">로그인 확인 중...</p>
+    <button id="clockInButton" onclick="recordAttendance('출근')">✅ 출근</button>
+    <button id="clockOutButton" onclick="askBreak()">🚪 퇴근</button>
+
+    <script>
+        const employeeId = localStorage.getItem("employeeId");
+
+        if (!employeeId) {
+            document.getElementById("status").innerText = "로그인이 필요합니다.";
+            document.getElementById("clockInButton").style.display = "none";
+            document.getElementById("clockOutButton").style.display = "none";
+        } else {
+            document.getElementById("status").innerText = "출퇴근 기록을 선택하세요.";
+        }
+
+        function recordAttendance(type, restUse = "-") {
+            google.script.run.recordAttendance(employeeId, type, restUse);
+            alert(`${type}이 기록되었습니다.`);
+            window.location.href = "index.html"; // ✅ 기록 후 메인 화면으로 이동
+        }
+
+        function askBreak() {
+            let restUse = confirm("휴게시간을 사용하셨나요? (확인: O, 취소: X)");
+            restUse = restUse ? "휴게사용O" : "휴게사용X";
+            recordAttendance("퇴근", restUse);
+        }
+    </script>
+</body>
+</html>
