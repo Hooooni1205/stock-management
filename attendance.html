@@ -50,6 +50,36 @@
             document.getElementById("attendanceUI").style.display = "block"; // 출퇴근 UI 표시
             document.getElementById("employeeName").innerText = employeeName; // 직원 이름 표시
         }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const storedEmployeeId = localStorage.getItem("employeeId");
+            
+            if (storedEmployeeId) {
+                console.log("✅ 로그인 확인됨. 자동으로 QR 스캐너 실행");
+                startQRScanner();
+            }
+        });
+        
+        function startQRScanner() {
+            const scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
+            
+            scanner.addListener('scan', function (content) {
+                console.log("✅ QR 코드 감지됨: ", content);
+                handleAttendance(content); // 출근/퇴근 로직 실행
+            });
+        
+            Instascan.Camera.getCameras().then(function (cameras) {
+                if (cameras.length > 0) {
+                    scanner.start(cameras[0]);
+                } else {
+                    console.error("🚨 카메라를 찾을 수 없습니다.");
+                }
+            }).catch(function (error) {
+                console.error("🚨 카메라 접근 오류:", error);
+            });
+        }
+
+        
         const employeeId = localStorage.getItem("employeeId");
 
         if (!employeeId) {
