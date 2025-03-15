@@ -32,6 +32,24 @@
     <button id="clockOutButton" onclick="askBreak()">🚪 퇴근</button>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const storedEmployeeId = localStorage.getItem("employeeId");
+            const storedEmployeeName = localStorage.getItem("employeeName"); 
+        
+            if (storedEmployeeId && storedEmployeeName) {
+                console.log("✅ 로그인된 사용자:", storedEmployeeName);
+                showAttendanceUI(storedEmployeeName); // 출퇴근 UI 표시
+            } else {
+                console.log("🚨 로그인 정보 없음 - 로그인 필요");
+                document.getElementById("loginNotice").style.display = "block"; // 로그인 필요 메시지 표시
+            }
+        });
+        
+        function showAttendanceUI(employeeName) {
+            document.getElementById("loginNotice").style.display = "none"; // 로그인 메시지 숨김
+            document.getElementById("attendanceUI").style.display = "block"; // 출퇴근 UI 표시
+            document.getElementById("employeeName").innerText = employeeName; // 직원 이름 표시
+        }
         const employeeId = localStorage.getItem("employeeId");
 
         if (!employeeId) {
