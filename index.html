@@ -1,51 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>재고 관리 시스템</title>
-    <style>
-        body { text-align: center; margin: 0; padding: 0; background: #f5f5f5; }
-        .loader { 
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #ff6b6b;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 50px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        iframe {
-            width: 100%;
-            height: 100vh;
-            border: none;
-            display: none; /* ✅ 처음에는 숨겨둠 */
-        }
-    </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>재고 관리 시스템</title>
+  <style>
+    :root{--bg:#0f1115;--text:#e7e9ee;--muted:#a7afc0;--accent:#ff6b6b}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR","Malgun Gothic",Arial,sans-serif;overflow-x:hidden}
+    .wrap{height:100%;display:grid;place-items:center}
+    .stage{width:100%;height:100vh;display:grid;grid-template-rows:1fr}
+    @supports(height:100svh){.stage{height:100svh}}
+    .loader{width:54px;height:54px;border-radius:50%;border:5px solid rgba(255,255,255,.15);border-top-color:var(--accent);margin:28px auto 12px;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce){.loader{animation:none}}
+    .msg{text-align:center;color:var(--muted);font-size:14px;margin:0 16px}
+    iframe{width:100%;height:100%;border:0;display:none}
+  </style>
 </head>
+
+<!-- iOS용 Storage Bridge (Apps Script iframe이 localStorage 읽고/쓰기) -->
+<script>
+  (function(){
+    const ALLOWED = ["https://script.google.com","https://script.googleusercontent.com"];
+    window.addEventListener("message",(e)=>{
+      try{
+        const d=e.data||{}; if(!d||d.__bridge!=="req") return;
+        const ok = ALLOWED.some(o=>e.origin && e.origin.startsWith(o));
+        if(!ok) return;
+        let value=null;
+        try{
+          if(d.op==="get") value=localStorage.getItem(d.key);
+          if(d.op==="set") localStorage.setItem(d.key,d.value);
+          if(d.op==="remove") localStorage.removeItem(d.key);
+        }catch(_){}
+        e.source && e.source.postMessage({__bridge:"ok",id:d.id,value}, e.origin);
+      }catch(_){}
+    });
+  })();
+</script>
+
 <body>
-
-    <div class="container">
-        <div class="loader"></div> <!-- ✅ 로딩 애니메이션 추가 -->
-        <iframe id="appFrame" src=""></iframe> <!-- ✅ iframe 추가 -->
+  <div class="wrap">
+    <div id="loadingArea">
+      <div class="loader" aria-hidden="true"></div>
+      <p class="msg">앱을 불러오는 중…</p>
     </div>
+    <div id="stage" class="stage"></div>
+  </div>
 
-    <script>
-        const googleScriptURL = "https://script.google.com/macros/s/AKfycbzckbAh2LPUi_8A-727dtpunfTnkLcHK2ZmEn2VzFx532W0ik6DaEnmuQOyKVGR37RP3Q/exec";
+  <script>
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyv6H5p0HkOJCTCpWw0l-xEeqJ_tQDBbl4F5IXS1nElf8biNdWfanI6PE4W0QdL3vDnVQ/exec";
+    const $ = (id)=>document.getElementById(id);
 
-        function loadApp() {
-            const iframe = document.getElementById("appFrame");
-            iframe.src = googleScriptURL;
-            iframe.onload = function() {
-                document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
-                iframe.style.display = "block"; // ✅ iframe 표시
-            };
-        }
-
-        loadApp(); // ✅ 앱 로드 실행
-    </script>
-
+    function mount(){
+      $("stage").innerHTML="";
+      const iframe=document.createElement("iframe");
+      iframe.id="appFrame"; iframe.referrerPolicy="no-referrer"; iframe.src=APPS_SCRIPT_URL;
+      iframe.onload=()=>{ $("loadingArea").style.display="none"; iframe.style.display="block"; };
+      $("stage").appendChild(iframe);
+    }
+    mount();
+  </script>
 </body>
 </html>
