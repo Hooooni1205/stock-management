@@ -28,10 +28,36 @@
   </div>
 
   <script>
-    // [중요] 새로 배포한 GAS 앱 URL (exec로 끝나는 것)로 꼭 변경하세요!
+    // [중요] 여기에 아까 배포하신 GAS 웹앱 URL(exec)을 그대로 넣으세요.
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCtmnNsmgSl9MdMsCqYFjxa4WJceNMUbi-KfMPpwEIPftGqQB6R1eTk7wfYoNfZ4t3jA/exec";
     
     const $ = (id) => document.getElementById(id);
+
+    // [핵심] 쿠키 제어 함수들 (사파리 재시작 대응)
+    function setCookie(name, value, days) {
+      let expires = "";
+      if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+      }
+      document.cookie = name + "=" + (value || "")  + expires + "; path=/; SameSite=Lax";
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+      }
+      return null;
+    }
+
+    function eraseCookie(name) {   
+      document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    }
 
     function mount(){
       $("stage").innerHTML="";
@@ -39,13 +65,12 @@
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
       
-      // [핵심] 로컬스토리지에서 저장된 ID 확인 후 URL에 붙임
-      // GitHub Pages는 최상위 도메인이므로 iOS에서도 스토리지가 안 지워짐!
-      const savedUid = localStorage.getItem("gas_uid");
+      // 1. 쿠키에서 저장된 ID 확인 (여기가 변경됨)
+      const savedUid = getCookie("gas_uid");
       let targetUrl = APPS_SCRIPT_URL;
       
+      // 2. ID가 있으면 URL 뒤에 붙여서 iframe 로드 (자동로그인 트리거)
       if (savedUid) {
-        // 이미 ?가 있는지 확인해서 & 또는 ? 로 연결
         const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
         targetUrl += sep + 'uid=' + encodeURIComponent(savedUid);
       }
@@ -59,14 +84,17 @@
       $("stage").appendChild(iframe);
     }
 
-    // [핵심] 앱에서 로그인 성공 시 메시지를 받아 저장
+    // 앱에서 보내는 메시지 수신 (저장/삭제)
     window.addEventListener('message', function(e) {
        const d = e.data || {};
+       
+       // 로그인 성공 -> 쿠키에 저장 (365일 유지)
        if (d.type === 'save_login' && d.uid) {
-         localStorage.setItem("gas_uid", d.uid);
+         setCookie("gas_uid", d.uid, 365);
        }
+       // 로그아웃 -> 쿠키 삭제
        if (d.type === 'remove_login') {
-         localStorage.removeItem("gas_uid");
+         eraseCookie("gas_uid");
        }
     });
 
