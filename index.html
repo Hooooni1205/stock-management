@@ -20,34 +20,59 @@
 
 <script>
   (function(){
+    // 쿠키 헬퍼 함수
+    function setCookie(name, value, days) {
+      let expires = "";
+      if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+      }
+      // SameSite=Lax로 설정하여 보안과 유지력 균형 맞춤
+      document.cookie = name + "=" + (value || "")  + expires + "; path=/; SameSite=Lax";
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+      }
+      return null;
+    }
+
+    function eraseCookie(name) {   
+      document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    }
+
     window.addEventListener("message", (e) => {
       try {
         const d = e.data || {};
-        // 브릿지 요청이 아니면 무시
         if (!d || d.__bridge !== "req") return;
 
-        // [핵심] 구글 스크립트 도메인에서 온 요청인지 확인 (유연하게)
+        // 보안 검사
         const origin = e.origin || "";
-        // script.google.com 또는 script.googleusercontent.com 포함 여부 확인
         if (origin.indexOf("script.google") === -1) return; 
 
         let resultValue = null;
         try {
-          // localStorage 작업 수행
+          // [핵심 변경] localStorage 대신 Cookie 사용
           if (d.op === "get") {
-            resultValue = localStorage.getItem(d.key);
+            resultValue = getCookie(d.key);
           } else if (d.op === "set") {
-            localStorage.setItem(d.key, d.value);
+            // 365일 저장
+            setCookie(d.key, d.value, 365);
             resultValue = true;
           } else if (d.op === "remove") {
-            localStorage.removeItem(d.key);
+            eraseCookie(d.key);
             resultValue = true;
           }
         } catch (err) {
-          // iOS 개인정보 보호 모드 등에서 에러 발생 시 무시
+          // 쿠키 차단 시 무시
         }
 
-        // 결과 회신 (보낸 곳으로)
         if (e.source) {
           e.source.postMessage({
             __bridge: "ok",
@@ -70,8 +95,9 @@
   </div>
 
   <script>
-    // [중요] 새로 배포한 웹앱 URL(exec)로 교체하세요!
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxr1dkXFq4vBdbQxi7BBVG0CRKmBrEEq3yNmupiC8yTPAhVU7bZSMJ1KLDa7UZnqhqSg/exec";
+    // [중요] 기존 배포된 URL 그대로 사용하시면 됩니다 (GAS 코드 변경 시에만 업데이트)
+    // 혹시 GAS 코드를 새로 배포했다면 아래 URL을 꼭 바꿔주세요.
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfdhVkox17f24tqQBcYzQsCpdYZmJkvZVE4KrLuU0SKqT9LCSJKRTe4yXzKYa09UfKeg/exec";
     
     const $ = (id) => document.getElementById(id);
 
@@ -81,13 +107,10 @@
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
       iframe.src = APPS_SCRIPT_URL;
-      
-      // 로딩 완료 시 처리
       iframe.onload = () => { 
         $("loadingArea").style.display = "none"; 
         iframe.style.display = "block"; 
       };
-      
       $("stage").appendChild(iframe);
     }
     mount();
