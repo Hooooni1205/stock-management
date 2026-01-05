@@ -20,18 +20,16 @@
 
 <script>
   (function(){
-    // GAS 웹앱 도메인 허용
-    const ALLOWED = ["https://script.google.com", "https://script.googleusercontent.com"];
-    
     window.addEventListener("message", (e) => {
       try {
         const d = e.data || {};
-        // 브릿지 요청인지 확인
+        // 브릿지 요청이 아니면 무시
         if (!d || d.__bridge !== "req") return;
 
-        // 보안: 출처 확인
-        const isAllowed = ALLOWED.some(origin => e.origin && e.origin.startsWith(origin));
-        if (!isAllowed) return;
+        // [핵심] 구글 스크립트 도메인에서 온 요청인지 확인 (유연하게)
+        const origin = e.origin || "";
+        // script.google.com 또는 script.googleusercontent.com 포함 여부 확인
+        if (origin.indexOf("script.google") === -1) return; 
 
         let resultValue = null;
         try {
@@ -46,10 +44,10 @@
             resultValue = true;
           }
         } catch (err) {
-          console.error("Storage Error:", err);
+          // iOS 개인정보 보호 모드 등에서 에러 발생 시 무시
         }
 
-        // 결과 GAS로 회신 (source가 존재할 때만)
+        // 결과 회신 (보낸 곳으로)
         if (e.source) {
           e.source.postMessage({
             __bridge: "ok",
@@ -57,9 +55,7 @@
             value: resultValue
           }, e.origin);
         }
-      } catch (err) {
-        // 무시
-      }
+      } catch (err) {}
     });
   })();
 </script>
@@ -74,8 +70,8 @@
   </div>
 
   <script>
-    // [중요] 배포된 최신 웹앱 URL(exec)로 꼭 교체하세요!
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJkPuekM2N1EwwsdV-ZIdm2j48VSVM9ssdXlZo9gW0w6UxRcEmnGxI1T8NN-5XgvyH/exec";
+    // [중요] 새로 배포한 웹앱 URL(exec)로 교체하세요!
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxr1dkXFq4vBdbQxi7BBVG0CRKmBrEEq3yNmupiC8yTPAhVU7bZSMJ1KLDa7UZnqhqSg/exec";
     
     const $ = (id) => document.getElementById(id);
 
