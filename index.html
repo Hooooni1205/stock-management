@@ -22,7 +22,6 @@
     @supports(height:100svh){.stage{height:100svh}}
     .loader{width:54px;height:54px;border-radius:50%;border:5px solid rgba(255,255,255,.15);border-top-color:var(--accent);margin:28px auto 12px;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media (prefers-reduced-motion:reduce){.loader{animation:none}}
     .msg{text-align:center;color:var(--muted);font-size:14px;margin:0 16px}
     iframe{width:100%;height:100%;border:0;display:none}
   </style>
@@ -38,18 +37,12 @@
   </div>
 
   <script>
-    /* ==========================================================
-       [설정] 배포된 GAS 웹앱 URL (exec로 끝나는 주소)
-       ========================================================== */
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCtmnNsmgSl9MdMsCqYFjxa4WJceNMUbi-KfMPpwEIPftGqQB6R1eTk7wfYoNfZ4t3jA/exec";
-
-    /* PWA 서비스 워커 등록 */
+    // [설정] 배포된 GAS URL
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZbx9qvhEn7o7wXOKcbt2lzpuDETFadBrcFOPzWMkjNYfRxQPdPzADv6xKcwok_LwOoQ/exec";
+    
+    // PWA 등록
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW Registered'))
-          .catch(err => console.log('SW Error', err));
-      });
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
 
     const $ = (id) => document.getElementById(id);
@@ -59,8 +52,20 @@
       const iframe = document.createElement("iframe");
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
-      iframe.src = APPS_SCRIPT_URL;
       
+      // [핵심] PWA 내부 저장소(LocalStorage)에서 ID 확인
+      // 앱을 껐다 켜도, 이 도메인(GitHub Pages)의 스토리지는 유지됨
+      const savedUid = localStorage.getItem("gas_uid_pwa");
+      
+      let targetUrl = APPS_SCRIPT_URL;
+      
+      if (savedUid) {
+        // ID가 있으면 URL에 붙여서 로드 -> GAS가 받아서 즉시 로그인 처리
+        const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
+        targetUrl += sep + 'uid=' + encodeURIComponent(savedUid);
+      }
+      
+      iframe.src = targetUrl;
       iframe.onload = () => { 
         $("loadingArea").style.display = "none"; 
         iframe.style.display = "block"; 
@@ -68,6 +73,21 @@
       
       $("stage").appendChild(iframe);
     }
+
+    // 앱 내부에서 로그인 성공 시 신호 수신
+    window.addEventListener('message', function(e) {
+       const d = e.data || {};
+       
+       // 로그인 성공 -> PWA 저장소에 영구 저장
+       if (d.type === 'save_login' && d.uid) {
+         localStorage.setItem("gas_uid_pwa", d.uid);
+       }
+       // 로그아웃 -> 삭제
+       if (d.type === 'remove_login') {
+         localStorage.removeItem("gas_uid_pwa");
+       }
+    });
+
     mount();
   </script>
 </body>
