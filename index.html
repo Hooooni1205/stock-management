@@ -38,37 +38,25 @@
 
   <script>
     /* ==========================================================
-       [필수 확인] 배포된 GAS 웹앱 URL (exec로 끝나는 주소)
+       [필수] 배포된 GAS 웹앱 URL
        ========================================================== */
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZbx9qvhEn7o7wXOKcbt2lzpuDETFadBrcFOPzWMkjNYfRxQPdPzADv6xKcwok_LwOoQ/exec";
     
-    // PWA 등록
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
 
     const $ = (id) => document.getElementById(id);
 
-    /* [핵심] 쿠키 제어 함수 (iOS 앱 재시작 시 데이터 보존용) */
-    function setCookie(name, value, days) {
-      let expires = "";
-      if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-      }
-      document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    // 저장소: 로컬스토리지 사용 (iOS PWA에서는 이게 그나마 쿠키보다 나을 수 있음)
+    function saveId(uid) {
+        localStorage.setItem("gas_pwa_uid", uid);
     }
-
-    function getCookie(name) {
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(';');
-      for(let i=0;i < ca.length;i++) {
-        let c = ca[i];
-        while (c.charAt(0)==' ') c = c.substring(1,c.length);
-        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
-      }
-      return null;
+    function getId() {
+        return localStorage.getItem("gas_pwa_uid");
+    }
+    function removeId() {
+        localStorage.removeItem("gas_pwa_uid");
     }
 
     function mount(){
@@ -77,16 +65,20 @@
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
       
-      // [수정됨] 쿠키에서 저장된 ID 확인
-      const savedUid = getCookie("gas_uid_pwa");
+      const savedUid = getId();
       
       let targetUrl = APPS_SCRIPT_URL;
-      
+      const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
+
+      // 1. UID가 있으면 붙임
       if (savedUid) {
-        // ID가 있으면 URL 파라미터로 붙여서 로드 -> GAS가 받아서 즉시 로그인
-        const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
         targetUrl += sep + 'uid=' + encodeURIComponent(savedUid);
       }
+      
+      // [핵심] 2. 타임스탬프를 붙여서 iOS가 캐시된(로그인 안된) 화면을 보여주는 것을 방지
+      // UID가 없더라도 타임스탬프는 무조건 붙여서 새로고침 유도
+      const timestampSep = targetUrl.indexOf('?') > -1 ? '&' : '?';
+      targetUrl += timestampSep + 'v=' + new Date().getTime();
       
       iframe.src = targetUrl;
       iframe.onload = () => { 
@@ -97,17 +89,14 @@
       $("stage").appendChild(iframe);
     }
 
-    // 앱 내부에서 로그인 성공 시 신호 수신
+    // 앱 내부 통신
     window.addEventListener('message', function(e) {
        const d = e.data || {};
-       
-       // 로그인 성공 -> 쿠키에 영구 저장 (365일)
        if (d.type === 'save_login' && d.uid) {
-         setCookie("gas_uid_pwa", d.uid, 365);
+         saveId(d.uid);
        }
-       // 로그아웃 -> 쿠키 삭제
        if (d.type === 'remove_login') {
-         setCookie("gas_uid_pwa", "", -1);
+         removeId();
        }
     });
 
