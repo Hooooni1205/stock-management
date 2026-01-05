@@ -2,26 +2,17 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>재고 관리 시스템</title>
-  
-  <link rel="manifest" href="./manifest.json">
-  <link rel="icon" href="./icon.png" type="image/png">
-  <meta name="theme-color" content="#0f1115">
-
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="재고관리">
-  <link rel="apple-touch-icon" href="./icon.png">
-
   <style>
     :root{--bg:#0f1115;--text:#e7e9ee;--muted:#a7afc0;--accent:#ff6b6b}
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR","Malgun Gothic",Arial,sans-serif;overflow-x:hidden;overscroll-behavior:none}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR","Malgun Gothic",Arial,sans-serif;overflow-x:hidden}
     .wrap{height:100%;display:grid;place-items:center}
     .stage{width:100%;height:100vh;display:grid;grid-template-rows:1fr}
     @supports(height:100svh){.stage{height:100svh}}
     .loader{width:54px;height:54px;border-radius:50%;border:5px solid rgba(255,255,255,.15);border-top-color:var(--accent);margin:28px auto 12px;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce){.loader{animation:none}}
     .msg{text-align:center;color:var(--muted);font-size:14px;margin:0 16px}
     iframe{width:100%;height:100%;border:0;display:none}
   </style>
@@ -37,26 +28,35 @@
   </div>
 
   <script>
-    /* ==========================================================
-       [필수] 배포된 GAS 웹앱 URL
-       ========================================================== */
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZbx9qvhEn7o7wXOKcbt2lzpuDETFadBrcFOPzWMkjNYfRxQPdPzADv6xKcwok_LwOoQ/exec";
+    // [중요] 여기에 아까 배포하신 GAS 웹앱 URL(exec)을 그대로 넣으세요.
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7RzTIJ1exCQfYCzc2Lh1BqXNNI-Cd7Sm54H7ZSLpOwSupTLJ8l04vCfbVOMymn82wwg/exec";
     
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
-    }
-
     const $ = (id) => document.getElementById(id);
 
-    // 저장소: 로컬스토리지 사용 (iOS PWA에서는 이게 그나마 쿠키보다 나을 수 있음)
-    function saveId(uid) {
-        localStorage.setItem("gas_pwa_uid", uid);
+    // [핵심] 쿠키 제어 함수들 (사파리 재시작 대응)
+    function setCookie(name, value, days) {
+      let expires = "";
+      if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+      }
+      document.cookie = name + "=" + (value || "")  + expires + "; path=/; SameSite=Lax";
     }
-    function getId() {
-        return localStorage.getItem("gas_pwa_uid");
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+      }
+      return null;
     }
-    function removeId() {
-        localStorage.removeItem("gas_pwa_uid");
+
+    function eraseCookie(name) {   
+      document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
 
     function mount(){
@@ -65,20 +65,15 @@
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
       
-      const savedUid = getId();
-      
+      // 1. 쿠키에서 저장된 ID 확인 (여기가 변경됨)
+      const savedUid = getCookie("gas_uid");
       let targetUrl = APPS_SCRIPT_URL;
-      const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
-
-      // 1. UID가 있으면 붙임
+      
+      // 2. ID가 있으면 URL 뒤에 붙여서 iframe 로드 (자동로그인 트리거)
       if (savedUid) {
+        const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
         targetUrl += sep + 'uid=' + encodeURIComponent(savedUid);
       }
-      
-      // [핵심] 2. 타임스탬프를 붙여서 iOS가 캐시된(로그인 안된) 화면을 보여주는 것을 방지
-      // UID가 없더라도 타임스탬프는 무조건 붙여서 새로고침 유도
-      const timestampSep = targetUrl.indexOf('?') > -1 ? '&' : '?';
-      targetUrl += timestampSep + 'v=' + new Date().getTime();
       
       iframe.src = targetUrl;
       iframe.onload = () => { 
@@ -89,14 +84,17 @@
       $("stage").appendChild(iframe);
     }
 
-    // 앱 내부 통신
+    // 앱에서 보내는 메시지 수신 (저장/삭제)
     window.addEventListener('message', function(e) {
        const d = e.data || {};
+       
+       // 로그인 성공 -> 쿠키에 저장 (365일 유지)
        if (d.type === 'save_login' && d.uid) {
-         saveId(d.uid);
+         setCookie("gas_uid", d.uid, 365);
        }
+       // 로그아웃 -> 쿠키 삭제
        if (d.type === 'remove_login') {
-         removeId();
+         eraseCookie("gas_uid");
        }
     });
 
