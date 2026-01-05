@@ -37,7 +37,9 @@
   </div>
 
   <script>
-    // [설정] 배포된 GAS URL
+    /* ==========================================================
+       [필수 확인] 배포된 GAS 웹앱 URL (exec로 끝나는 주소)
+       ========================================================== */
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZbx9qvhEn7o7wXOKcbt2lzpuDETFadBrcFOPzWMkjNYfRxQPdPzADv6xKcwok_LwOoQ/exec";
     
     // PWA 등록
@@ -47,20 +49,41 @@
 
     const $ = (id) => document.getElementById(id);
 
+    /* [핵심] 쿠키 제어 함수 (iOS 앱 재시작 시 데이터 보존용) */
+    function setCookie(name, value, days) {
+      let expires = "";
+      if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+      }
+      document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+      }
+      return null;
+    }
+
     function mount(){
       $("stage").innerHTML="";
       const iframe = document.createElement("iframe");
       iframe.id = "appFrame"; 
       iframe.referrerPolicy = "no-referrer"; 
       
-      // [핵심] PWA 내부 저장소(LocalStorage)에서 ID 확인
-      // 앱을 껐다 켜도, 이 도메인(GitHub Pages)의 스토리지는 유지됨
-      const savedUid = localStorage.getItem("gas_uid_pwa");
+      // [수정됨] 쿠키에서 저장된 ID 확인
+      const savedUid = getCookie("gas_uid_pwa");
       
       let targetUrl = APPS_SCRIPT_URL;
       
       if (savedUid) {
-        // ID가 있으면 URL에 붙여서 로드 -> GAS가 받아서 즉시 로그인 처리
+        // ID가 있으면 URL 파라미터로 붙여서 로드 -> GAS가 받아서 즉시 로그인
         const sep = targetUrl.indexOf('?') > -1 ? '&' : '?';
         targetUrl += sep + 'uid=' + encodeURIComponent(savedUid);
       }
@@ -78,13 +101,13 @@
     window.addEventListener('message', function(e) {
        const d = e.data || {};
        
-       // 로그인 성공 -> PWA 저장소에 영구 저장
+       // 로그인 성공 -> 쿠키에 영구 저장 (365일)
        if (d.type === 'save_login' && d.uid) {
-         localStorage.setItem("gas_uid_pwa", d.uid);
+         setCookie("gas_uid_pwa", d.uid, 365);
        }
-       // 로그아웃 -> 삭제
+       // 로그아웃 -> 쿠키 삭제
        if (d.type === 'remove_login') {
-         localStorage.removeItem("gas_uid_pwa");
+         setCookie("gas_uid_pwa", "", -1);
        }
     });
 
