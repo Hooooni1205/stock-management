@@ -18,23 +18,48 @@
   </style>
 </head>
 
-<!-- iOS용 Storage Bridge (Apps Script iframe이 localStorage 읽고/쓰기) -->
 <script>
   (function(){
-    const ALLOWED = ["https://script.google.com","https://script.googleusercontent.com"];
-    window.addEventListener("message",(e)=>{
-      try{
-        const d=e.data||{}; if(!d||d.__bridge!=="req") return;
-        const ok = ALLOWED.some(o=>e.origin && e.origin.startsWith(o));
-        if(!ok) return;
-        let value=null;
-        try{
-          if(d.op==="get") value=localStorage.getItem(d.key);
-          if(d.op==="set") localStorage.setItem(d.key,d.value);
-          if(d.op==="remove") localStorage.removeItem(d.key);
-        }catch(_){}
-        e.source && e.source.postMessage({__bridge:"ok",id:d.id,value}, e.origin);
-      }catch(_){}
+    // GAS 웹앱 도메인 허용
+    const ALLOWED = ["https://script.google.com", "https://script.googleusercontent.com"];
+    
+    window.addEventListener("message", (e) => {
+      try {
+        const d = e.data || {};
+        // 브릿지 요청인지 확인
+        if (!d || d.__bridge !== "req") return;
+
+        // 보안: 출처 확인
+        const isAllowed = ALLOWED.some(origin => e.origin && e.origin.startsWith(origin));
+        if (!isAllowed) return;
+
+        let resultValue = null;
+        try {
+          // localStorage 작업 수행
+          if (d.op === "get") {
+            resultValue = localStorage.getItem(d.key);
+          } else if (d.op === "set") {
+            localStorage.setItem(d.key, d.value);
+            resultValue = true;
+          } else if (d.op === "remove") {
+            localStorage.removeItem(d.key);
+            resultValue = true;
+          }
+        } catch (err) {
+          console.error("Storage Error:", err);
+        }
+
+        // 결과 GAS로 회신 (source가 존재할 때만)
+        if (e.source) {
+          e.source.postMessage({
+            __bridge: "ok",
+            id: d.id,
+            value: resultValue
+          }, e.origin);
+        }
+      } catch (err) {
+        // 무시
+      }
     });
   })();
 </script>
@@ -49,23 +74,27 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcfTfRNrqQEnZ1pDx-JYpMTnRjD88EX5hV34BAVTpmNwWVM2Ukd_NXPfGQcvqsSLf2TA/exec";
-    const $ = (id)=>document.getElementById(id);
+    // [중요] 배포된 최신 웹앱 URL(exec)로 꼭 교체하세요!
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJkPuekM2N1EwwsdV-ZIdm2j48VSVM9ssdXlZo9gW0w6UxRcEmnGxI1T8NN-5XgvyH/exec";
+    
+    const $ = (id) => document.getElementById(id);
 
     function mount(){
       $("stage").innerHTML="";
-      const iframe=document.createElement("iframe");
-      iframe.id="appFrame"; iframe.referrerPolicy="no-referrer"; iframe.src=APPS_SCRIPT_URL;
-      iframe.onload=()=>{ $("loadingArea").style.display="none"; iframe.style.display="block"; };
+      const iframe = document.createElement("iframe");
+      iframe.id = "appFrame"; 
+      iframe.referrerPolicy = "no-referrer"; 
+      iframe.src = APPS_SCRIPT_URL;
+      
+      // 로딩 완료 시 처리
+      iframe.onload = () => { 
+        $("loadingArea").style.display = "none"; 
+        iframe.style.display = "block"; 
+      };
+      
       $("stage").appendChild(iframe);
     }
     mount();
   </script>
 </body>
 </html>
-
-
-
-
-
-
